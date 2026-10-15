@@ -79,8 +79,8 @@ Mesin virtual Debian dalam skema ini dikonfigurasi sebagai **DHCP Client**:
 Pastikan VM master terhubung sementara ke internet, lalu unduh kedua skrip langsung via `wget`:
 
 ```bash
-wget -O buildrepo.sh https://raw.githubusercontent.com/asfydien/deb-airgap/refs/heads/main/buildrepo.sh
-wget -O shrink.sh https://raw.githubusercontent.com/asfydien/deb-airgap/refs/heads/main/shrink.sh
+wget -O buildrepo.sh https://raw.githubusercontent.com/asfydien/deb-airgap/main/buildrepo.sh
+wget -O shrink.sh https://raw.githubusercontent.com/asfydien/deb-airgap/main/shrink.sh
 chmod +x buildrepo.sh shrink.sh
 ./buildrepo.sh
 ./shrink.sh
