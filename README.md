@@ -1,4 +1,5 @@
-# Debian Offline Repo Builder
+# Debian Air-Gapped Lab
+*Offline APT Repository & VM Template for Isolated Lab Environments*
 
 Otomatisasi pembuatan repositori lokal APT yang terisolasi (*air-gapped*) dan bertanda tangan kriptografis (GPG) pada Debian Linux. Dilengkapi skrip pembersihan dan *zero-filling* disk untuk menghasilkan berkas ekspor OVA yang sangat ramping.
 
@@ -78,8 +79,8 @@ Mesin virtual Debian dalam skema ini dikonfigurasi sebagai **DHCP Client**:
 Pastikan VM master terhubung sementara ke internet, lalu unduh kedua skrip langsung via `wget`:
 
 ```bash
-wget -O buildrepo.sh [https://raw.githubusercontent.com/username-anda/debian-offline-repo-builder/main/buildrepo.sh](https://raw.githubusercontent.com/username-anda/debian-offline-repo-builder/main/buildrepo.sh)
-wget -O shrink.sh [https://raw.githubusercontent.com/username-anda/debian-offline-repo-builder/main/shrink.sh](https://raw.githubusercontent.com/username-anda/debian-offline-repo-builder/main/shrink.sh)
+wget -O buildrepo.sh https://raw.githubusercontent.com/asfydien/deb-airgap/refs/heads/main/buildrepo.sh
+wget -O shrink.sh https://raw.githubusercontent.com/asfydien/deb-airgap/refs/heads/main/shrink.sh
 chmod +x buildrepo.sh shrink.sh
 ```
 
