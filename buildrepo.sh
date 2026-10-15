@@ -11,8 +11,6 @@ ARCH="amd64"
 KEYRING_DIR="/etc/apt/keyrings"
 KEY_FILE="$KEYRING_DIR/local-repo.asc"
 
-GRAFANA_VER="12.0.0"
-
 PAKET=(
     # --- Jaringan & Server Lab Dasar ---
     dnsmasq
@@ -89,13 +87,13 @@ echo "=== [1/6] Mengaktifkan Repo Online & Mengosongkan Direktori Repo ==="
 echo "[+] Target OS: Debian ($CODENAME - $ARCH)"
 rm -f /etc/apt/sources.list.d/local.sources
 
-# Pulihkan repo online bawaan
+# Pulihkan repo online bawaan jika sebelumnya pernah dimatikan
 [ -f /etc/apt/sources.list.disabled ] && mv /etc/apt/sources.list.disabled /etc/apt/sources.list
 for f in /etc/apt/sources.list.d/*.disabled; do
     [ -f "$f" ] && mv "$f" "${f%.disabled}"
 done
 
-# Kosongkan repo lokal agar bersih dari file usang
+# Kosongkan direktori repo lokal agar bersih dari file/versi usang
 rm -rf "$REPO_DIR/pool" "$REPO_DIR/dists"
 rm -f /tmp/*.deb /tmp/release.conf
 
@@ -104,7 +102,23 @@ echo 'APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/01keep-cache
 apt-get update
 apt-get install -y apt-utils wget curl gnupg
 
-echo "=== [2/6] Mengunduh Paket & Eksternal (Grafana v${GRAFANA_VER}) ==="
+echo "=== [2/6] Mendeteksi & Mengunduh Paket Eksternal ==="
+
+# Deteksi super cepat via GitHub Atom feed (< 1 detik, ~20 KB)
+echo "[+] Memeriksa rilis terbaru Grafana OSS cabang v12..."
+GRAFANA_VER=$(curl -fsSL --max-time 4 "https://github.com/grafana/grafana/releases.atom" 2>/dev/null \
+    | grep -oP 'tag/v\K(12\.[0-9]+\.[0-9]+)' \
+    | head -n 1)
+
+# Fallback instan jika koneksi bermasalah atau timeout
+if [ -z "$GRAFANA_VER" ]; then
+    GRAFANA_VER="12.0.0"
+    echo "[!] Pengecekan otomatis timeout, menggunakan default versi v${GRAFANA_VER}"
+else
+    echo "[+] Berhasil mendeteksi Grafana v12 terbaru: v${GRAFANA_VER}"
+fi
+
+echo "[+] Mengunduh paket materi praktikum..."
 apt-get install -y --reinstall --download-only "${PAKET[@]}"
 
 echo "[+] Mengunduh Webmin, Usermin, dan Grafana OSS (v${GRAFANA_VER})..."
@@ -112,7 +126,7 @@ wget -qO /tmp/webmin.deb https://webmin.com/download/deb/webmin-current.deb
 wget -qO /tmp/usermin.deb https://webmin.com/download/deb/usermin-current.deb
 wget -qO /tmp/grafana.deb "https://dl.grafana.com/oss/release/grafana_${GRAFANA_VER}_amd64.deb"
 
-# Validasi berkas deb grafana
+# Validasi integritas berkas deb Grafana
 if ! dpkg-deb -I /tmp/grafana.deb > /dev/null 2>&1; then
     echo "[-] Gagal: Berkas Grafana v${GRAFANA_VER} rusak atau URL 404!"
     exit 1
@@ -124,7 +138,7 @@ echo "=== [3/6] Membangun Struktur Hierarki Repo ($CODENAME) ==="
 mkdir -p "$REPO_DIR/pool/main"
 mkdir -p "$REPO_DIR/dists/$CODENAME/main/binary-$ARCH"
 
-# Salin semua paket ke pool
+# Salin seluruh berkas .deb ke pool
 cp -f /var/cache/apt/archives/*.deb "$REPO_DIR/pool/main/" 2>/dev/null
 cp -f /tmp/webmin.deb "$REPO_DIR/pool/main/webmin.deb"
 cp -f /tmp/usermin.deb "$REPO_DIR/pool/main/usermin.deb"
