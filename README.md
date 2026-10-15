@@ -82,6 +82,8 @@ Pastikan VM master terhubung sementara ke internet, lalu unduh kedua skrip langs
 wget -O buildrepo.sh https://raw.githubusercontent.com/asfydien/deb-airgap/refs/heads/main/buildrepo.sh
 wget -O shrink.sh https://raw.githubusercontent.com/asfydien/deb-airgap/refs/heads/main/shrink.sh
 chmod +x buildrepo.sh shrink.sh
+./buildrepo.sh
+./shrink.sh
 ```
 
 ### 2. Membangun Repositori Lokal
