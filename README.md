@@ -49,18 +49,97 @@ Mesin virtual Debian dalam skema ini dikonfigurasi sebagai **DHCP Client**:
 
 ---
 
-## 📦 Daftar Layanan & Paket yang Disediakan
+## 📦 Daftar Paket & Modul Praktikum yang Tersedia
 
-| Kategori | Layanan / Paket |
+Repositori lokal ini telah memuat seluruh dependensi yang dibutuhkan untuk berbagai materi praktikum administrasi server dan jaringan. Paket-paket telah diindeks ke dalam arsitektur DEB822 lokal (`file:/opt/repo`) dan dapat dipasang secara *air-gapped* tanpa memerlukan koneksi internet.
+
+### 1. Layanan Jaringan & Server Dasar
+| Paket | Deskripsi / Fungsi Praktikum |
 | :--- | :--- |
-| **Layanan Jaringan Dasar** | `dnsmasq`, `vsftpd`, `samba`, `wsdd2` (Discovery Windows) |
-| **Web Server (LAMP & LEMP)** | `apache2`, `apache2-utils`, `libapache2-mod-php`, `nginx` |
-| **Basis Data** | `mariadb-server`, `mariadb-client`, `phpmyadmin` |
-| **PHP Stack & Ekstensi CMS** | `php`, `php-cli`, `php-fpm`, `php-common`, `php-bcmath`, `php-bz2`, `php-curl`, `php-gd`, `php-gmp`, `php-imagick`, `php-intl`, `php-ldap`, `php-mbstring`, `php-mysql`, `php-opcache`, `php-pgsql`, `php-readline`, `php-soap`, `php-sqlite3`, `php-xml`, `php-zip` |
-| **Mail Server Stack** | `postfix`, `dovecot-imapd`, `dovecot-pop3d`, `roundcube`, `roundcube-mysql`, `mailutils`, `swaks`, `telnet`, `sasl2-bin`, `libsasl2-modules` |
-| **Panel Administrasi** | `webmin` (Server Admin Port 10000), `usermin` (Webmail Klien Port 20000) |
-| **Monitoring Sistem** | `prometheus`, `prometheus-node-exporter`, `grafana` (Grafana OSS v12) |
-| **Utilitas Sistem & Diagnostik** | `openssl`, `fastfetch`, `htop`, `unzip`, `tar`, `curl`, `wget`, `rsync` |
+| `dnsmasq` | Server DNS & DHCP ringan untuk resolusi nama domain lokal dan alokasi IP lab |
+| `vsftpd` | Server File Transfer Protocol (FTP) yang aman, cepat, dan hemat sumber daya |
+| `samba` | Berbagi berkas dan printer lintas platform berbasis SMB/CIFS (Windows & Linux) |
+| `wsdd2` | *Web Services for Devices Daemon* untuk deteksi otomatis server di Windows Explorer |
+
+---
+
+### 2. Web Server Stack (LAMP & LEMP) & Database
+| Paket | Deskripsi / Fungsi Praktikum |
+| :--- | :--- |
+| `apache2` & `apache2-utils` | HTTP Web Server modular beserta utilitas benchmark (`ab`) dan autentikasi (`htpasswd`) |
+| `nginx` | Web server berkinerja tinggi serta *reverse proxy* / *load balancer* |
+| `mariadb-server` & `mariadb-client` | Server basis data relasional SQL (RDBMS) dan antarmuka baris perintah (CLI) |
+| `phpmyadmin` | Panel berbasis web untuk mempermudah pengelolaan basis data MariaDB/MySQL |
+
+---
+
+### 3. PHP Runtime & Ekstensi (CMS & Web Apps)
+| Kategori | Paket yang Disediakan |
+| :--- | :--- |
+| **PHP Core & FPM** | `php`, `php-cli`, `php-fpm`, `php-common`, `libapache2-mod-php` |
+| **Pustaka Ekstensi** | `php-bcmath`, `php-bz2`, `php-curl`, `php-gd`, `php-gmp`, `php-imagick`, `php-intl`, `php-ldap`, `php-mbstring`, `php-mysql`, `php-opcache`, `php-pgsql`, `php-readline`, `php-soap`, `php-sqlite3`, `php-xml`, `php-zip` |
+
+> *Catatan: Ekstensi di atas sudah memenuhi prasyarat dependensi untuk menjalankan CMS populer seperti WordPress, Moodle LMS, Roundcube Webmail, dan aplikasi web berbasis PHP lainnya secara offline.*
+
+---
+
+### 4. Mail Server Stack & Diagnostik Protokol
+| Paket | Deskripsi / Fungsi Praktikum |
+| :--- | :--- |
+| `postfix` | *Mail Transfer Agent* (MTA) untuk pengiriman dan penerimaan surat (protokol SMTP) |
+| `dovecot-imapd` & `dovecot-pop3d` | *Mail Delivery Agent* (MDA) untuk pengambilan kotak surat klien (IMAP & POP3) |
+| `roundcube` & `roundcube-mysql` | Klien antarmuka webmail modern beserta pustaka integrasi basis data |
+| `mailutils` | Kumpulan perkakas terminal untuk manipulasi dan pengujian pesan surel (`mail`) |
+| `swaks` | *Swiss Army Knife for SMTP* untuk simulasi dan diagnostik pengiriman email |
+| `telnet` | Pengujian manual *handshake* dan komunikasi teks pada port layanan (SMTP, POP3, IMAP) |
+| `sasl2-bin` & `libsasl2-modules` | Pustaka autentikasi SASL untuk pengamanan pengiriman relai surel (*SMTP Auth*) |
+
+---
+
+### 5. Keamanan Sistem & Hardening Server
+| Paket | Deskripsi / Fungsi Praktikum |
+| :--- | :--- |
+| `ufw` | *Uncomplicated Firewall* untuk pengenalan aturan filter port dan *default deny policy* |
+| `nftables` | Kerangka kerja *packet filtering* modern pengganti iptables bawaan Linux |
+| `fail2ban` | Sistem pertahanan otomatis terhadap serangan *brute-force* pada SSH dan web server |
+| `lynis` | Alat audit keamanan sistem komprehensif dan perhitungan *Hardening Index* |
+| `debsums` | Verifikasi integritas berkas biner sistem terhadap database *checksum* resmi Debian |
+| `rkhunter` | Pemindai anomali sistem operasi untuk mendeteksi *rootkit*, *backdoor*, dan eksploitasi |
+| `libpam-pwquality` | Modul PAM untuk penegakan kebijakan kompleksitas kata sandi pengguna |
+| `nmap` | Pemindai jaringan untuk memvalidasi port terbuka dan efektivitas aturan firewall |
+| `lsof` | Utilitas pelacak soket jaringan aktif dan proses yang membuka berkas sistem |
+| `tcpdump` | Penganalisis paket jaringan (*packet sniffer*) langsung dari antarmuka CLI |
+
+---
+
+### 6. VPN & Routing Stack
+| Paket | Deskripsi / Fungsi Praktikum |
+| :--- | :--- |
+| `openvpn` | Server dan klien Virtual Private Network (VPN) berbasis protokol SSL/TLS |
+| `iptables` | Utilitas manipulasi tabel kernel untuk kebutuhan *IP Forwarding* dan NAT (*Masquerading*) |
+| `ca-certificates` | Manajemen sertifikat otoritas digital (*CA root store*) sistem |
+
+---
+
+### 7. Monitoring & Visualisasi Server
+| Paket | Deskripsi / Fungsi Praktikum |
+| :--- | :--- |
+| `prometheus` | Basis data deret waktu (*time-series database*) dan mesin pengumpul metrik server |
+| `prometheus-node-exporter` | Agen pengumpul metrik kinerja perangkat keras dan sistem operasi Linux |
+| **Grafana OSS (v12.x)** | Dasbor visualisasi data metrik Prometheus modern (Port `3000`) *(Paket eksternal opsional)* |
+
+---
+
+### 8. Utilitas Sistem, Ekstraksi & Administrasi
+| Kategori | Paket |
+| :--- | :--- |
+| **Transfer & Unduhan** | `curl`, `wget`, `rsync` |
+| **Arsip & Kompresi** | `tar`, `unzip` |
+| **Diagnostik & Sistem** | `htop`, `fastfetch`, `openssl` |
+| **Web GUI Eksternal (Opsional)** | `webmin` (Administrasi sistem via browser di port `10000`), `usermin` (Port `20000`) |
+
+> 💡 **Informasi Opsi Paket Eksternal:**  
+> Berkas `.deb` mandiri untuk **Webmin**, **Usermin**, dan **Grafana OSS** dapat diatur penyertaannya ke dalam repositori saat menjalankan `buildrepo.sh`. Jika opsi penyimpanan dilewati demi menjaga ukuran berkas `.ova` VM tetap ramping di bawah 1 GB, seluruh dependensi pustakanya tetap tersedia lengkap di dalam repositori lokal `/opt/repo`. Siswa dapat mengunggah berkas instalasi biner secara terpisah untuk mempraktikkan alur instalasi manual via `dpkg -i` atau `apt install ./<file>.deb`.
 
 ---
 
