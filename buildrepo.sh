@@ -1,7 +1,16 @@
 #!/bin/bash
 
+# --- Definisi Format Teks & Warna ANSI ---
+CLR_RESET="\e[0m"
+CLR_BOLD="\e[1m"
+CLR_GREEN="\e[1;32m"
+CLR_BLUE="\e[1;34m"
+CLR_CYAN="\e[1;36m"
+CLR_YELLOW="\e[1;33m"
+CLR_RED="\e[1;31m"
+
 if [ "$EUID" -ne 0 ]; then
-    echo "[-] Jalankan script ini sebagai root (sudo su)."
+    echo -e "${CLR_RED}[-]${CLR_RESET} Jalankan script ini sebagai root (sudo su)."
     exit 1
 fi
 
@@ -10,6 +19,14 @@ CODENAME=$(grep VERSION_CODENAME /etc/os-release | cut -d= -f2)
 ARCH="amd64"
 KEYRING_DIR="/etc/apt/keyrings"
 KEY_FILE="$KEYRING_DIR/local-repo.asc"
+
+echo -e "${CLR_BOLD}${CLR_CYAN}==========================================================${CLR_RESET}"
+echo -e "${CLR_BOLD}${CLR_CYAN}         Debian Air-Gapped Local Repository Builder       ${CLR_RESET}"
+echo -e "${CLR_BOLD}${CLR_CYAN}==========================================================${CLR_RESET}"
+echo ""
+echo -en "${CLR_YELLOW}[?]${CLR_RESET} Sertakan paket utama Webmin, Usermin, dan Grafana ke repo lokal? [y/N] (Pilih 'n' untuk menghemat ~250 MB): "
+read -r INCLUDE_EXT
+INCLUDE_EXT=${INCLUDE_EXT:-n}
 
 PAKET=(
     # --- Jaringan & Server Lab Dasar ---
@@ -69,6 +86,23 @@ PAKET=(
     # --- Monitoring System Stack ---
     prometheus
     prometheus-node-exporter
+
+    # --- Keamanan & Hardening Server ---
+    ufw
+    nftables
+    fail2ban
+    lynis
+    debsums
+    rkhunter
+    libpam-pwquality
+    nmap
+    lsof
+    tcpdump
+
+    # --- OpenVPN & Routing Stack ---
+    openvpn
+    iptables
+    ca-certificates
     
     # --- Utilitas Ekstraksi Web & Manajemen File ---
     unzip
@@ -83,8 +117,9 @@ PAKET=(
     htop
 )
 
-echo "=== [1/6] Mengaktifkan Repo Online & Mengosongkan Direktori Repo ==="
-echo "[+] Target OS: Debian ($CODENAME - $ARCH)"
+echo ""
+echo -e "${CLR_BOLD}${CLR_BLUE}[1/6]${CLR_RESET} ${CLR_BOLD}Mengaktifkan Repo Online & Mengosongkan Direktori Repo${CLR_RESET}"
+echo -e "${CLR_GREEN}[+]${CLR_RESET} Target OS: Debian ($CODENAME - $ARCH)"
 rm -f /etc/apt/sources.list.d/local.sources
 
 # Pulihkan repo online bawaan jika sebelumnya pernah dimatikan
@@ -102,51 +137,62 @@ echo 'APT::Keep-Downloaded-Packages "true";' > /etc/apt/apt.conf.d/01keep-cache
 apt-get update
 apt-get install -y apt-utils wget curl gnupg
 
-echo "=== [2/6] Mendeteksi & Mengunduh Paket Eksternal ==="
+echo ""
+echo -e "${CLR_BOLD}${CLR_BLUE}[2/6]${CLR_RESET} ${CLR_BOLD}Mendeteksi & Mengunduh Paket Eksternal${CLR_RESET}"
 
-# Deteksi super cepat via GitHub Atom feed (< 1 detik, ~20 KB)
-echo "[+] Memeriksa rilis terbaru Grafana OSS cabang v12..."
+# Deteksi rilis terbaru Grafana via GitHub Atom feed
+echo -e "${CLR_GREEN}[+]${CLR_RESET} Memeriksa rilis terbaru Grafana OSS cabang v12..."
 GRAFANA_VER=$(curl -fsSL --max-time 4 "https://github.com/grafana/grafana/releases.atom" 2>/dev/null \
     | grep -oP 'tag/v\K(12\.[0-9]+\.[0-9]+)' \
     | head -n 1)
 
-# Fallback instan jika koneksi bermasalah atau timeout
+# Fallback jika terjadi timeout atau kegagalan jaringan
 if [ -z "$GRAFANA_VER" ]; then
     GRAFANA_VER="12.0.0"
-    echo "[!] Pengecekan otomatis timeout, menggunakan default versi v${GRAFANA_VER}"
+    echo -e "${CLR_YELLOW}[!]${CLR_RESET} Pengecekan otomatis timeout, menggunakan default versi v${GRAFANA_VER}"
 else
-    echo "[+] Berhasil mendeteksi Grafana v12 terbaru: v${GRAFANA_VER}"
+    echo -e "${CLR_GREEN}[+]${CLR_RESET} Berhasil mendeteksi Grafana v12 terbaru: v${GRAFANA_VER}"
 fi
 
-echo "[+] Mengunduh paket materi praktikum..."
+echo -e "${CLR_GREEN}[+]${CLR_RESET} Mengunduh paket materi praktikum..."
 apt-get install -y --reinstall --download-only "${PAKET[@]}"
 
-echo "[+] Mengunduh Webmin, Usermin, dan Grafana OSS (v${GRAFANA_VER})..."
+echo -e "${CLR_GREEN}[+]${CLR_RESET} Mengunduh Webmin, Usermin, dan Grafana OSS (v${GRAFANA_VER})..."
 wget -qO /tmp/webmin.deb https://webmin.com/download/deb/webmin-current.deb
 wget -qO /tmp/usermin.deb https://webmin.com/download/deb/usermin-current.deb
 wget -qO /tmp/grafana.deb "https://dl.grafana.com/oss/release/grafana_${GRAFANA_VER}_amd64.deb"
 
-# Validasi integritas berkas deb Grafana
+# Validasi berkas deb Grafana
 if ! dpkg-deb -I /tmp/grafana.deb > /dev/null 2>&1; then
-    echo "[-] Gagal: Berkas Grafana v${GRAFANA_VER} rusak atau URL 404!"
+    echo -e "${CLR_RED}[-]${CLR_RESET} Gagal: Berkas Grafana v${GRAFANA_VER} rusak atau URL 404!"
     exit 1
 fi
 
+echo -e "${CLR_GREEN}[+]${CLR_RESET} Mengunduh dependensi pustaka Webmin, Usermin, dan Grafana..."
 apt-get install -y --allow-downgrades --download-only /tmp/webmin.deb /tmp/usermin.deb /tmp/grafana.deb
 
-echo "=== [3/6] Membangun Struktur Hierarki Repo ($CODENAME) ==="
+echo ""
+echo -e "${CLR_BOLD}${CLR_BLUE}[3/6]${CLR_RESET} ${CLR_BOLD}Membangun Struktur Hierarki Repo ($CODENAME)${CLR_RESET}"
 mkdir -p "$REPO_DIR/pool/main"
 mkdir -p "$REPO_DIR/dists/$CODENAME/main/binary-$ARCH"
 
-# Salin seluruh berkas .deb ke pool
+# Salin seluruh berkas dependensi ke pool
 cp -f /var/cache/apt/archives/*.deb "$REPO_DIR/pool/main/" 2>/dev/null
-cp -f /tmp/webmin.deb "$REPO_DIR/pool/main/webmin.deb"
-cp -f /tmp/usermin.deb "$REPO_DIR/pool/main/usermin.deb"
-cp -f /tmp/grafana.deb "$REPO_DIR/pool/main/grafana.deb"
+
+# Opsi penyalinan berkas eksternal
+if [[ "$INCLUDE_EXT" =~ ^[Yy]$ ]]; then
+    echo -e "${CLR_GREEN}[+]${CLR_RESET} Menyalin Webmin, Usermin, dan Grafana ke repositori lokal..."
+    cp -f /tmp/webmin.deb "$REPO_DIR/pool/main/webmin.deb"
+    cp -f /tmp/usermin.deb "$REPO_DIR/pool/main/usermin.deb"
+    cp -f /tmp/grafana.deb "$REPO_DIR/pool/main/grafana.deb"
+else
+    echo -e "${CLR_YELLOW}[*]${CLR_RESET} Paket utama Webmin, Usermin, dan Grafana dilewati (hanya dependensinya yang disimpan)."
+fi
 
 rm -f /tmp/webmin.deb /tmp/usermin.deb /tmp/grafana.deb
 
-echo "=== [4/6] Mengindeks Repositori ==="
+echo ""
+echo -e "${CLR_BOLD}${CLR_BLUE}[4/6]${CLR_RESET} ${CLR_BOLD}Mengindeks Repositori${CLR_RESET}"
 cd "$REPO_DIR" || exit
 
 apt-ftparchive packages pool/main > "dists/$CODENAME/main/binary-$ARCH/Packages"
@@ -164,7 +210,8 @@ EOF
 apt-ftparchive -c /tmp/release.conf release "dists/$CODENAME" > "dists/$CODENAME/Release"
 rm -f /tmp/release.conf
 
-echo "=== [5/6] Menandatangani Release dengan Kunci GPG Lokal ==="
+echo ""
+echo -e "${CLR_BOLD}${CLR_BLUE}[5/6]${CLR_RESET} ${CLR_BOLD}Menandatangani Release dengan Kunci GPG Lokal${CLR_RESET}"
 mkdir -p "$KEYRING_DIR"
 
 if ! gpg --list-keys "repo-lokal@lab" > /dev/null 2>&1; then
@@ -181,7 +228,8 @@ gpg --armor --export "$KEY_ID" > "$KEY_FILE"
 chmod 644 "$KEY_FILE"
 chmod -R 755 "$REPO_DIR"
 
-echo "=== [6/6] Mengunci Sistem: Hanya Repo Lokal ==="
+echo ""
+echo -e "${CLR_BOLD}${CLR_BLUE}[6/6]${CLR_RESET} ${CLR_BOLD}Mengunci Sistem: Hanya Repo Lokal${CLR_RESET}"
 [ -f /etc/apt/sources.list ] && mv /etc/apt/sources.list /etc/apt/sources.list.disabled
 for f in /etc/apt/sources.list.d/*.sources /etc/apt/sources.list.d/*.list; do
     [ -f "$f" ] && mv "$f" "$f.disabled"
