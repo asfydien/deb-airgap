@@ -140,35 +140,90 @@ apt-get install -y apt-utils wget curl gnupg
 echo ""
 echo -e "${CLR_BOLD}${CLR_BLUE}[2/6]${CLR_RESET} ${CLR_BOLD}Mendeteksi & Mengunduh Paket Eksternal${CLR_RESET}"
 
-# Deteksi rilis terbaru Grafana via GitHub Atom feed
+# 1. Deteksi Grafana OSS cabang v12
 echo -e "${CLR_GREEN}[+]${CLR_RESET} Memeriksa rilis terbaru Grafana OSS cabang v12..."
 GRAFANA_VER=$(curl -fsSL --max-time 4 "https://github.com/grafana/grafana/releases.atom" 2>/dev/null \
     | grep -oP 'tag/v\K(12\.[0-9]+\.[0-9]+)' \
     | head -n 1)
 
-# Fallback jika terjadi timeout atau kegagalan jaringan
 if [ -z "$GRAFANA_VER" ]; then
     GRAFANA_VER="12.0.0"
-    echo -e "${CLR_YELLOW}[!]${CLR_RESET} Pengecekan otomatis timeout, menggunakan default versi v${GRAFANA_VER}"
+    echo -e "${CLR_YELLOW}[!]${CLR_RESET} Pengecekan Grafana timeout, menggunakan default versi v${GRAFANA_VER}"
 else
     echo -e "${CLR_GREEN}[+]${CLR_RESET} Berhasil mendeteksi Grafana v12 terbaru: v${GRAFANA_VER}"
 fi
+GRAFANA_URL="https://dl.grafana.com/oss/release/grafana_${GRAFANA_VER}_amd64.deb"
 
-echo -e "${CLR_GREEN}[+]${CLR_RESET} Mengunduh paket materi praktikum..."
+# 2. Deteksi Webmin resmi dari GitHub
+echo -e "${CLR_GREEN}[+]${CLR_RESET} Memeriksa rilis terbaru Webmin dari GitHub..."
+WEBMIN_TAG=$(curl -fsSL --max-time 4 "https://github.com/webmin/webmin/releases.atom" 2>/dev/null \
+    | grep -oP 'tag/\K(v?[0-9]+\.[0-9]+(-[0-9]+)?)' \
+    | head -n 1)
+
+if [ -z "$WEBMIN_TAG" ]; then
+    WEBMIN_TAG="2.202"
+    echo -e "${CLR_YELLOW}[!]${CLR_RESET} Pengecekan Webmin timeout, menggunakan default tag ${WEBMIN_TAG}"
+else
+    echo -e "${CLR_GREEN}[+]${CLR_RESET} Berhasil mendeteksi Webmin terbaru: ${WEBMIN_TAG}"
+fi
+WEBMIN_VER="${WEBMIN_TAG#v}"
+WEBMIN_URL="https://github.com/webmin/webmin/releases/download/${WEBMIN_TAG}/webmin_${WEBMIN_VER}_all.deb"
+WEBMIN_FALLBACK="https://webmin.com/download/deb/webmin-current.deb"
+
+# 3. Deteksi Usermin resmi dari GitHub
+echo -e "${CLR_GREEN}[+]${CLR_RESET} Memeriksa rilis terbaru Usermin dari GitHub..."
+USERMIN_TAG=$(curl -fsSL --max-time 4 "https://github.com/webmin/usermin/releases.atom" 2>/dev/null \
+    | grep -oP 'tag/\K(v?[0-9]+\.[0-9]+)' \
+    | head -n 1)
+
+if [ -z "$USERMIN_TAG" ]; then
+    USERMIN_TAG="2.102"
+    echo -e "${CLR_YELLOW}[!]${CLR_RESET} Pengecekan Usermin timeout, menggunakan default tag ${USERMIN_TAG}"
+else
+    echo -e "${CLR_GREEN}[+]${CLR_RESET} Berhasil mendeteksi Usermin terbaru: ${USERMIN_TAG}"
+fi
+USERMIN_VER="${USERMIN_TAG#v}"
+USERMIN_URL="https://github.com/webmin/usermin/releases/download/${USERMIN_TAG}/usermin-webmail_${USERMIN_VER}_all.deb"
+USERMIN_FALLBACK="https://github.com/webmin/usermin/releases/download/${USERMIN_TAG}/usermin_${USERMIN_VER}_all.deb"
+
+echo ""
+echo -e "${CLR_GREEN}[+]${CLR_RESET} Mengunduh paket materi praktikum dari repositori resmi Debian..."
 apt-get install -y --reinstall --download-only "${PAKET[@]}"
 
-echo -e "${CLR_GREEN}[+]${CLR_RESET} Mengunduh Webmin, Usermin, dan Grafana OSS (v${GRAFANA_VER})..."
-wget -qO /tmp/webmin.deb https://webmin.com/download/deb/webmin-current.deb
-wget -qO /tmp/usermin.deb https://webmin.com/download/deb/usermin-current.deb
-wget -qO /tmp/grafana.deb "https://dl.grafana.com/oss/release/grafana_${GRAFANA_VER}_amd64.deb"
+# Fungsi unduh dengan progres dan validasi berkas
+unduh_dan_validasi() {
+    local nama="$1"
+    local url="$2"
+    local output="$3"
+    local fallback="$4"
 
-# Validasi berkas deb Grafana
-if ! dpkg-deb -I /tmp/grafana.deb > /dev/null 2>&1; then
-    echo -e "${CLR_RED}[-]${CLR_RESET} Gagal: Berkas Grafana v${GRAFANA_VER} rusak atau URL 404!"
+    echo -e "${CLR_CYAN}[>]${CLR_RESET} Mengunduh ${CLR_BOLD}${nama}${CLR_RESET} dari GitHub..."
+    if wget --show-progress -q --timeout=20 --tries=3 -c -O "$output" "$url" && dpkg-deb -I "$output" >/dev/null 2>&1; then
+        echo -e "${CLR_GREEN}[✓]${CLR_RESET} ${nama} berhasil diunduh dan terverifikasi valid."
+        return 0
+    fi
+
+    if [ -n "$fallback" ]; then
+        echo -e "${CLR_YELLOW}[!]${CLR_RESET} Tautan GitHub utama gagal/tidak valid, mencoba tautan alternatif..."
+        rm -f "$output"
+        if wget --show-progress -q --timeout=20 --tries=3 -c -O "$output" "$fallback" && dpkg-deb -I "$output" >/dev/null 2>&1; then
+            echo -e "${CLR_GREEN}[✓]${CLR_RESET} ${nama} berhasil diunduh via tautan alternatif."
+            return 0
+        fi
+    fi
+
+    echo -e "${CLR_RED}[✗]${CLR_RESET} Gagal mengunduh atau memverifikasi ${nama}!"
+    rm -f "$output"
     exit 1
-fi
+}
 
-echo -e "${CLR_GREEN}[+]${CLR_RESET} Mengunduh dependensi pustaka Webmin, Usermin, dan Grafana..."
+echo ""
+unduh_dan_validasi "Webmin (v${WEBMIN_VER})" "$WEBMIN_URL" "/tmp/webmin.deb" "$WEBMIN_FALLBACK"
+unduh_dan_validasi "Usermin Webmail (v${USERMIN_VER})" "$USERMIN_URL" "/tmp/usermin.deb" "$USERMIN_FALLBACK"
+unduh_dan_validasi "Grafana OSS (v${GRAFANA_VER})" "$GRAFANA_URL" "/tmp/grafana.deb" ""
+
+echo ""
+echo -e "${CLR_GREEN}[+]${CLR_RESET} Mengunduh dependensi pustaka sistem untuk Webmin, Usermin, dan Grafana..."
 apt-get install -y --allow-downgrades --download-only /tmp/webmin.deb /tmp/usermin.deb /tmp/grafana.deb
 
 echo ""
